@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}History{% endblock %}
+
+{% block content %}
+<div style="max-width:1200px;margin:0 auto;padding:32px 24px">
+
+  <div style="margin-bottom:28px">
+    <h1 style="font-size:24px;font-weight:700">Patient History</h1>
+    <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">Search and manage all saved records</p>
+  </div>
+
+  <!-- Search card (your Stitch design) -->
+  <div class="card" style="max-width:520px;margin:0 auto 40px;display:flex;flex-direction:column;gap:16px">
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label style="font-size:13px;color:var(--text-secondary)">Patient Name</label>
+      <input type="text" id="searchName" placeholder="e.g. Arjun Kumar">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label style="font-size:13px;color:var(--text-secondary)">Keyword in Transcript</label>
+      <input type="text" id="searchKeyword" placeholder="e.g. appendectomy">
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <label style="font-size:13px;color:var(--text-secondary)">Note Type</label>
+      <select id="searchType">
+        <option value="">All</option>
+        <option value="consultation">Consultation</option>
+        <option value="preop">Pre-op</option>
+        <option value="intraop">Intra-op</option>
+        <option value="postop">Post-op</option>
+        <option value="anesthesia">Anesthesia</option>
+        <option value="nursing">Nursing</option>
+        <option value="operative">Operative</option>
+      </select>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="searchBtn" style="flex:1">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Search
+      </button>
+      <button class="btn btn-outline" id="loadRecentBtn">Load Recent</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsArea">
+    {% if records %}
+    <div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">
+      {{ records|length }} record(s) found
+    </div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Patient</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Preview</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody">
+          {% for r in records %}
+          <tr>
+            <td style="color:var(--text-muted);font-size:12px">{{ r.id }}</td>
+            <td style="font-weight:500">{{ r.patient_name }}</td>
+            <td>
+              <span style="padding:2px 10px;border-radius:20px;font-size:11px;background:var(--teal-dim);color:var(--teal);border:1px solid var(--border)">
+                {{ r.doc_type }}
+              </span>
+            </td>
+            <td>
+              <span class="badge badge-{{ r.status.lower() }}">{{ r.status }}</span>
+            </td>
+            <td class="preview">{{ r.preview }}...</td>
+            <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">{{ r.created_at[:16] }}</td>
+            <td>
+              <div style="display:flex;gap:6px">
+                <a href="/record/{{ r.id }}" class="btn btn-outline" style="padding:4px 10px;font-size:12px">View</a>
+                <button class="btn btn-danger delete-btn" data-id="{{ r.id }}" style="padding:4px 10px;font-size:12px">Delete</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div id="emptyState" style="text-align:center;padding:60px 24px;color:var(--text-muted)">
+      <div style="font-size:40px;margin-bottom:16px">📋</div>
+      <div style="font-size:16px;margin-bottom:8px">No records yet</div>
+      <div style="font-size:14px">Go to the <a href="/dashboard" style="color:var(--teal)">Dashboard</a> to create your first note</div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Search
+document.getElementById("searchBtn").addEventListener("click", async () => {
+  const name    = document.getElementById("searchName").value.trim();
+  const keyword = document.getElementById("searchKeyword").value.trim();
+  const type    = document.getElementById("searchType").value;
+
+  const params = new URLSearchParams();
+  if (name)    params.append("patient_name", name);
+  if (keyword) params.append("keyword", keyword);
+  if (type)    params.append("doc_type", type);
+
+  const res  = await fetch("/api/search?" + params.toString());
+  const data = await res.json();
+  renderResults(data.records);
+});
+
+document.getElementById("loadRecentBtn").addEventListener("click", async () => {
+  const res  = await fetch("/api/search");
+  const data = await res.json();
+  renderResults(data.records);
+});
+
+function renderResults(records) {
+  const area = document.getElementById("resultsArea");
+  if (!records.length) {
+    area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">No records found.</div>';
+    return;
+  }
+
+  let rows = "";
+  for (const r of records) {
+    const statusClass = r.status ? r.status.toLowerCase() : "unknown";
+    rows += `<tr>
+      <td style="color:var(--text-muted);font-size:12px">${r.id}</td>
+      <td style="font-weight:500">${r.patient_name}</td>
+      <td><span style="padding:2px 10px;border-radius:20px;font-size:11px;background:var(--teal-dim);color:var(--teal);border:1px solid var(--border)">${r.doc_type}</span></td>
+      <td><span class="badge badge-${statusClass}">${r.status}</span></td>
+      <td class="preview">${r.preview || ""}...</td>
+      <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${(r.created_at||"").slice(0,16)}</td>
+      <td>
+        <div style="display:flex;gap:6px">
+          <a href="/record/${r.id}" class="btn btn-outline" style="padding:4px 10px;font-size:12px">View</a>
+          <button class="btn btn-danger delete-btn" data-id="${r.id}" style="padding:4px 10px;font-size:12px">Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  area.innerHTML = `
+    <div style="margin-bottom:12px;font-size:13px;color:var(--text-secondary)">${records.length} record(s) found</div>
+    <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <table class="history-table">
+        <thead><tr>
+          <th>#</th><th>Patient</th><th>Type</th>
+          <th>Status</th><th>Preview</th><th>Date</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  attachDeleteHandlers();
+}
+
+function attachDeleteHandlers() {
+  document.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Delete this record?")) return;
+      const id = btn.dataset.id;
+      await fetch(`/api/record/${id}`, { method: "DELETE" });
+      btn.closest("tr").remove();
+    });
+  });
+}
+
+attachDeleteHandlers();
+</script>
+{% endblock %}

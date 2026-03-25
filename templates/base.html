@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedScribe AI — {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<nav>
+  <a href="/" class="nav-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="8" fill="#00d4aa" opacity=".15"/>
+      <path d="M14 6v6M14 16v6M6 14h6M16 14h6" stroke="#00d4aa" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    MedScribe <span class="dot">AI</span>
+  </a>
+
+  <div class="nav-links">
+    <a href="/"          class="{{ 'active' if request.path == '/' }}">Home</a>
+    <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' }}">Dashboard</a>
+    <a href="/history"   class="{{ 'active' if request.path == '/history' }}">History</a>
+  </div>
+
+  <div class="system-badge">System Ready</div>
+</nav>
+
+<main>
+  {% block content %}{% endblock %}
+</main>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,458 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div style="max-width:1300px;margin:0 auto;padding:32px 24px">
+
+  <!-- Top bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:16px">
+    <div>
+      <h1 style="font-size:24px;font-weight:700">Documentation Dashboard</h1>
+      <p style="color:var(--text-secondary);font-size:14px;margin-top:4px">Record, transcribe and structure clinical notes</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <input type="text" id="patientName" placeholder="Patient name / ID..." style="width:220px">
+      <span id="timestamp" style="font-size:12px;color:var(--text-muted)"></span>
+    </div>
+  </div>
+
+  <!-- Doc type tabs -->
+  <div class="doc-tabs" style="margin-bottom:24px">
+    <button class="doc-tab active" data-type="consultation">Consultation</button>
+    <button class="doc-tab" data-type="preop">Pre-op</button>
+    <button class="doc-tab" data-type="intraop">Intra-op</button>
+    <button class="doc-tab" data-type="postop">Post-op</button>
+    <button class="doc-tab" data-type="anesthesia">Anesthesia</button>
+    <button class="doc-tab" data-type="nursing">Nursing</button>
+    <button class="doc-tab" data-type="operative">Operative</button>
+  </div>
+
+  <!-- Main grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- LEFT: Voice input -->
+    <div class="card" style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Mic section -->
+      <div>
+        <div class="section-title">Voice Input</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0">
+          <button class="mic-btn" id="micBtn">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </button>
+          <div id="micStatus" style="font-size:13px;color:var(--text-secondary)">Click mic to start recording</div>
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Demo examples -->
+      <div>
+        <div class="section-title">Try an example</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          <button class="demo-btn" data-text="Patient has had fever for 3 days and mild cough. No known allergies. Prescribed paracetamol 500mg twice daily and rest for 5 days." data-type="consultation">
+            🤒 Fever + cough — Consultation
+          </button>
+          <button class="demo-btn" data-text="Appendectomy performed successfully under general anesthesia by Dr. Sharma. No complications. Blood loss minimal around 50ml. Patient stable post-op. Prescribed amoxicillin 500mg and ibuprofen 400mg." data-type="operative">
+            🔪 Appendectomy — Operative
+          </button>
+          <button class="demo-btn" data-text="Pre-operative assessment for Mr. Rajan, 54 years. Diagnosis coronary artery disease. Scheduled for bypass surgery tomorrow. Allergic to penicillin. Blood group O positive. ECG normal. Consent obtained." data-type="preop">
+            📋 Bypass surgery — Pre-op
+          </button>
+          <button class="demo-btn" data-text="Post-operative day 1. Patient recovering in ICU. BP 120 over 80. Pulse 76. Oxygen saturation 98 percent. Pain level 3 out of 10. On IV morphine and IV antibiotics. Diet liquid only for 24 hours." data-type="postop">
+            🏥 ICU recovery — Post-op
+          </button>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- Transcript -->
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <div class="section-title">Transcript</div>
+        <textarea id="transcript" rows="6" placeholder="Transcript appears here as you speak, or type directly..."></textarea>
+      </div>
+
+      <!-- Audio upload -->
+      <div style="margin-top:8px">
+        <div class="section-title">Or upload audio file</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:9px 14px;border:1px dashed var(--border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text-secondary);font-size:13px;transition:all .2s"
+                 id="uploadLabel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span id="uploadLabelText">Choose mp3 / wav / m4a...</span>
+            <input type="file" id="audioUpload" accept=".mp3,.wav,.m4a,.webm" style="display:none"/>
+          </label>
+          <button class="btn btn-outline" id="transcribeBtn" disabled style="white-space:nowrap">
+            Transcribe
+          </button>
+        </div>
+        <div id="uploadStatus" style="font-size:12px;color:var(--text-secondary);margin-top:6px"></div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" id="analyzeBtn" style="flex:1">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Analyze
+        </button>
+        <button class="btn btn-outline" id="clearBtn">Clear</button>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Structured report -->
+    <div class="card" style="display:flex;flex-direction:column;gap:16px">
+
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="section-title">Structured Report</div>
+        <span class="badge badge-unknown" id="statusBadge">—</span>
+      </div>
+
+      <div id="reportTitle" style="font-size:15px;font-weight:600;color:var(--text-secondary)">
+        Awaiting input...
+      </div>
+
+      <!-- Report content -->
+      <div id="reportContent" style="flex:1;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden">
+        <div style="padding:32px 20px;text-align:center;color:var(--text-muted);font-size:14px;line-height:1.8">
+          Click a demo example or speak/type a note,<br>then press <strong style="color:var(--teal)">Analyze</strong>.<br><br>
+          The AI will extract symptoms, diagnosis,<br>procedures, medications, vitals and more.
+        </div>
+      </div>
+
+      <!-- Export buttons -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline" id="copyBtn" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+        <button class="btn btn-outline" id="exportBtn" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button class="btn btn-outline" id="newBtn">New Entry</button>
+      </div>
+
+      <div id="savedNote" style="font-size:12px;color:var(--teal);display:none">
+        ✓ Saved to database
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.demo-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.demo-btn:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: var(--teal-dim);
+}
+</style>
+
+<script>
+let activeType = "consultation";
+let reportData = null;
+let isRecording = false;
+let recognition = null;
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById("timestamp").textContent =
+    now.toLocaleDateString("en-IN", {day:"2-digit", month:"short", year:"numeric"}) +
+    "  " + now.toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"});
+}
+updateClock();
+setInterval(updateClock, 60000);
+
+// Doc type tabs
+document.querySelectorAll(".doc-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".doc-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    activeType = tab.dataset.type;
+  });
+});
+
+// Demo buttons
+document.querySelectorAll(".demo-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.getElementById("transcript").value = btn.dataset.text;
+    // Switch to correct tab
+    const type = btn.dataset.type;
+    document.querySelectorAll(".doc-tab").forEach(t => {
+      t.classList.toggle("active", t.dataset.type === type);
+    });
+    activeType = type;
+  });
+});
+
+// Speech recognition setup
+if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = "en-IN";
+  let finalText = "";
+
+  recognition.onresult = (e) => {
+    let interim = "";
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      if (e.results[i].isFinal) finalText += e.results[i][0].transcript + " ";
+      else interim += e.results[i][0].transcript;
+    }
+    document.getElementById("transcript").value = finalText + interim;
+  };
+
+  recognition.onerror = () => stopRecording();
+  recognition.onend = () => { if (isRecording) recognition.start(); };
+}
+
+function startRecording() {
+  isRecording = true;
+  document.getElementById("micBtn").classList.add("recording");
+  document.getElementById("micStatus").textContent = "Recording... speak now";
+  document.getElementById("micStatus").style.color = "var(--danger)";
+  document.getElementById("waveform").classList.add("active");
+  if (recognition) recognition.start();
+  else document.getElementById("micStatus").textContent = "Speech API not supported — type manually";
+}
+
+function stopRecording() {
+  isRecording = false;
+  document.getElementById("micBtn").classList.remove("recording");
+  document.getElementById("micStatus").textContent = "Recording stopped";
+  document.getElementById("micStatus").style.color = "var(--text-secondary)";
+  document.getElementById("waveform").classList.remove("active");
+  if (recognition) recognition.stop();
+}
+
+document.getElementById("micBtn").addEventListener("click", () => {
+  isRecording ? stopRecording() : startRecording();
+});
+
+// Analyze
+document.getElementById("analyzeBtn").addEventListener("click", async () => {
+  const transcript = document.getElementById("transcript").value.trim();
+  const patientName = document.getElementById("patientName").value.trim();
+  const btn = document.getElementById("analyzeBtn");
+
+  if (!transcript) {
+    document.getElementById("transcript").style.borderColor = "var(--danger)";
+    setTimeout(() => document.getElementById("transcript").style.borderColor = "", 1500);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Analyzing...';
+  document.getElementById("reportContent").innerHTML =
+    '<div style="padding:24px;display:flex;align-items:center;gap:12px;color:var(--text-secondary);font-size:14px"><div class="spinner"></div>Processing with AI...</div>';
+
+  try {
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript, doc_type: activeType, patient_name: patientName })
+    });
+    const data = await res.json();
+
+    if (!data.success) throw new Error(data.error);
+
+    reportData = data.report;
+    renderReport(data.report, data.status, patientName, data.record_id);
+
+  } catch (err) {
+    document.getElementById("reportContent").innerHTML =
+      `<div style="padding:20px;color:var(--danger);font-size:14px">Error: ${err.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Analyze';
+});
+
+function renderReport(report, status, patientName, recordId) {
+  const typeLabel = document.querySelector(".doc-tab.active").textContent;
+  document.getElementById("reportTitle").textContent =
+    typeLabel + (patientName ? " — " + patientName : "");
+
+  // Status badge
+  const badge = document.getElementById("statusBadge");
+  badge.textContent = status;
+  badge.className = "badge badge-" + status.toLowerCase();
+
+  const highlightKeys = ["diagnosis", "prescription", "medications", "procedure",
+    "complications", "condition", "planned procedure", "drugs given", "final diagnosis"];
+
+  let html = '<table class="report-table">';
+  for (const [k, v] of Object.entries(report)) {
+    const isEmpty = !v || v === "Not mentioned" || v === "Not specified";
+    const isHighlight = highlightKeys.some(h => k.toLowerCase().includes(h));
+    const rowClass = isEmpty ? "empty" : isHighlight ? "highlight" : "";
+    html += `<tr class="${rowClass}"><td>${k}</td><td>${isEmpty ? "—" : v}</td></tr>`;
+  }
+  html += `<tr><td>Generated</td><td style="color:var(--text-muted);font-size:12px">${new Date().toLocaleString("en-IN")}</td></tr>`;
+  html += '</table>';
+
+  document.getElementById("reportContent").innerHTML = html;
+  document.getElementById("copyBtn").disabled = false;
+  document.getElementById("exportBtn").disabled = false;
+
+  const savedNote = document.getElementById("savedNote");
+  savedNote.style.display = "block";
+  savedNote.textContent = `✓ Saved to database (Record #${recordId})`;
+}
+
+// Clear
+document.getElementById("clearBtn").addEventListener("click", () => {
+  document.getElementById("transcript").value = "";
+  document.getElementById("patientName").value = "";
+  document.getElementById("reportContent").innerHTML =
+    '<div style="padding:32px 20px;text-align:center;color:var(--text-muted);font-size:14px">Ready for new input.</div>';
+  document.getElementById("reportTitle").textContent = "Awaiting input...";
+  document.getElementById("statusBadge").textContent = "—";
+  document.getElementById("statusBadge").className = "badge badge-unknown";
+  document.getElementById("copyBtn").disabled = true;
+  document.getElementById("exportBtn").disabled = true;
+  document.getElementById("savedNote").style.display = "none";
+  reportData = null;
+});
+
+// New entry
+document.getElementById("newBtn").addEventListener("click", () => {
+  document.getElementById("clearBtn").click();
+});
+
+// Copy
+document.getElementById("copyBtn").addEventListener("click", () => {
+  if (!reportData) return;
+  const patientName = document.getElementById("patientName").value || "Patient";
+  const typeLabel = document.querySelector(".doc-tab.active").textContent;
+  let text = `=== MedScribe AI — ${typeLabel} ===\nPatient: ${patientName}\nDate: ${new Date().toLocaleString("en-IN")}\n\n`;
+  for (const [k, v] of Object.entries(reportData)) text += `${k}: ${v}\n`;
+  navigator.clipboard.writeText(text).then(() => {
+    document.getElementById("copyBtn").textContent = "Copied!";
+    setTimeout(() => document.getElementById("copyBtn").innerHTML =
+      '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy', 2000);
+  });
+});
+
+// Export
+document.getElementById("exportBtn").addEventListener("click", async () => {
+    if (!reportData) return;
+
+    const btn = document.getElementById("exportBtn");
+    btn.textContent = "Generating PDF...";
+    btn.disabled = true;
+
+    try {
+        const res = await fetch("/api/export-pdf", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                patient_name: document.getElementById("patientName").value || "Patient",
+                doc_type: activeType,
+                report: reportData,
+                transcript: document.getElementById("transcript").value
+            })
+        });
+
+        if (!res.ok) throw new Error("PDF generation failed");
+
+        // Download the PDF
+        const blob = await res.blob();
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `medscribe_${Date.now()}.pdf`;
+        a.click();
+
+        btn.textContent = "Downloaded!";
+        setTimeout(() => {
+            btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export';
+            btn.disabled = false;
+        }, 2000);
+
+    } catch (err) {
+        btn.textContent = "Failed — check console";
+        btn.disabled = false;
+        console.error(err);
+    }
+});
+
+// Audio upload + Whisper transcription
+const audioUpload = document.getElementById("audioUpload");
+const transcribeBtn = document.getElementById("transcribeBtn");
+const uploadStatus = document.getElementById("uploadStatus");
+
+audioUpload.addEventListener("change", () => {
+    if (audioUpload.files.length > 0) {
+        document.getElementById("uploadLabelText").textContent = audioUpload.files[0].name;
+        transcribeBtn.disabled = false;
+    }
+});
+
+transcribeBtn.addEventListener("click", async () => {
+    const file = audioUpload.files[0];
+    if (!file) return;
+
+    transcribeBtn.disabled = true;
+    transcribeBtn.innerHTML = '<div class="spinner"></div>';
+    uploadStatus.textContent = "Transcribing with Whisper... this may take a moment";
+    uploadStatus.style.color = "var(--teal)";
+
+    const formData = new FormData();
+    formData.append("audio", file);
+
+    try {
+        const res = await fetch("/api/transcribe", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+
+        if (!data.success) throw new Error(data.error);
+
+        document.getElementById("transcript").value = data.transcript;
+        uploadStatus.textContent = "✓ Transcription complete";
+        uploadStatus.style.color = "var(--teal)";
+
+    } catch (err) {
+        uploadStatus.textContent = "Error: " + err.message;
+        uploadStatus.style.color = "var(--danger)";
+    }
+
+    transcribeBtn.disabled = false;
+    transcribeBtn.textContent = "Transcribe";
+});
+</script>
+{% endblock %}
